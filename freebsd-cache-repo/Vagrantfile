@@ -1,0 +1,52 @@
+# -*- mode: ruby; -*-
+
+Vagrant.configure("2") do |config|
+	config.vm.box = "freebsd101"
+  config.vm.box_url = "http://iris.hosting.lv/freebsd-10.1-amd64.box"
+
+  # configure the NICs
+  config.vm.provider :virtualbox do |vb|
+    vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+    # vb.customize ["modifyvm", :id, "--nictype2", "virtio"]
+  end
+  
+  # use NFS for the synced folder
+  config.vm.synced_folder ".", "/vagrant", :nfs => true
+
+  # setup for all machines
+  config.vm.provision "shell" do |s|
+    s.path = "setup.sh"
+  end
+
+	# master NFS server
+	config.vm.define "conan", primary: true do |conan|
+		conan.vm.hostname = "conan"
+		conan.vm.network :private_network, ip: "10.0.0.2"
+
+		conan.vm.provision "shell" do |s|
+			s.path = "conan-setup.sh"
+		end
+
+	end
+
+	# clien server
+	config.vm.define "tamara" do |tamara|	
+		tamara.vm.hostname = "tamara"
+		tamara.vm.network :private_network, ip: "10.0.0.3"
+
+		tamara.vm.provision "shell" do |s|
+			s.path = "tamara-setup.sh"
+		end
+	end
+
+	# client tunnel server
+	config.vm.define "corin" do |corin|	
+		corin.vm.hostname = "corin"
+		corin.vm.network :private_network, ip: "10.0.0.4"
+
+		corin.vm.provision "shell" do |s|
+			s.path = "corin-setup.sh"
+		end
+	end
+
+end

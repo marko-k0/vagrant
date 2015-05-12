@@ -1,0 +1,33 @@
+{
+  "name": "test",
+  "version": "1.0.0",
+  "description": "test",
+  "license": "proprietary",
+  "homepage": "http://test.com/",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~1.10.2",
+    "jquery-migrate": "~1.2.1",
+    "jquery-ui": "~1.9.2",
+    "fancybox": "~2.1.5",
+    "jquery-file-upload": "~9.8.1",
+    "lodash": "~2.4.1",
+    "underscore.string": "~2.4.0",
+    "jqueryui-touch-punch": "*",
+    "jquery-validation": "~1.13.1",
+    "jquery-cookie": "~1.4.1",
+    "jquery.expander": "~1.4.13",
+    "json2": "*",
+    "timezone-js": "~0.4.13",
+    "jquery.transit": "~0.9.12",
+    "DataTables": "~1.10.4",
+    "jquery.taps": "*"
+  }
+}

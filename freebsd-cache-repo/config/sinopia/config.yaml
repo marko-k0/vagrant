@@ -1,0 +1,56 @@
+# Look here for more config file examples:
+# https://github.com/rlidwka/sinopia/tree/master/conf
+
+listen: 0.0.0.0:4873
+
+# path to a directory with all packages
+storage: /usr/home/conan/sinopia/storage
+
+auth:
+  htpasswd:
+    file: /usr/home/conan/sinopia/htpasswd
+    # Maximum amount of users allowed to register, defaults to "+inf".
+    # You can set this to -1 to disable registration.
+    max_users: 50
+
+# a list of other known repositories we can talk to
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+
+    # amount of time to wait for repository to respond
+    # before giving up and use the local cached copy
+    timeout: 10s
+
+    # maximum time in which data is considered up to date
+    #
+    # default is 2 minutes, so server won't request the same data from
+    # uplink if a similar request was made less than 2 minutes ago
+    maxage: 60m
+
+packages:
+  '@*/*':
+    # scoped packages
+    access: $all
+    publish: $authenticated
+
+  '*':
+    # allow all users (including non-authenticated users) to read and
+    # publish all packages
+    #
+    # you can specify usernames/groupnames (depending on your auth plugin)
+    # and three keywords: "$all", "$anonymous", "$authenticated"
+    access: $all
+
+    # allow all known users to publish packages
+    # (anyone can register by default, remember?)
+    publish: $authenticated
+
+    # if package is not available locally, proxy requests to 'npmjs' registry
+    proxy: npmjs
+
+# log settings
+logs:
+  #- {type: stdout, format: pretty, level: http}
+  - {type: file, path: /var/log/sinopia.log, level: info}
+
