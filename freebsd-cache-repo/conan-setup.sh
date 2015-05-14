@@ -77,5 +77,5 @@ forever list | grep sinopia >& /dev/null || forever start \
 
 forever list | grep private-bower >& /dev/null || forever start \
 	-l /var/log/private-bower.log -a --pidFile /var/run/private-bower.pid --uid "daemon" \
-	/usr/bin/private-bower -c /usr/home/conan/private-bower/private-bower-config.json
+	/usr/bin/private-bower --config /usr/home/conan/private-bower/private-bower-config.json
 
