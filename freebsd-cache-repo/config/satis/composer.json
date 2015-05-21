@@ -1,14 +1,20 @@
 {
-    "name": "Test Composer Mirror",
-    "description": "Test Mirror",
-    "homepage": "http://10.0.0.2:4680",
+    "name": "Test",
+    "description": "Test",
     "minimum-stability": "stable",
     "license": "proprietary",
+    "require-dependencies": true,
 
    "repositories": [
-        { "type": "composer", "url": "http://packagist.org" }
+        { "type": "composer", "url": "http://10.0.0.2:4680" }
     ],
 
+    "authors": [
+        {
+            "name": "James Bond",
+            "email": "james@bond.com"
+        }
+    ],
     "require": {
         "maximebf/debugbar": "~1.10",
         "raveren/kint": "0.9.*",
@@ -26,6 +32,5 @@
     "require-dev": {
         "phpunit/phpunit": "~4.5",
         "fzaninotto/faker": "~1.4"
-    },
-    "require-dependencies": true
+    }
 }
