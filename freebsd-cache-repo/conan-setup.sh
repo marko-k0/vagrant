@@ -97,7 +97,7 @@ echo "Setting up bower mirror (private-bower)"
 
 test -f /usr/local/bin/private-bower || npm install -g private-bower
 mkdir -p /usr/home/conan/private-bower
-cp /vagran    t/config/private-bower/private-bower-config.json /usr/home/conan/private-bower
+cp /vagrant/config/private-bower/private-bower-config.json /usr/home/conan/private-bower
 chown -R conan /usr/home/conan/private-bower
 chmod 764 /usr/home/conan/private-bower
 
