@@ -18,4 +18,3 @@ cp /vagrant/config/sinopia/.npmrc .
 #npm set registry "http://10.0.0.2:4873"
 
 chown -R vagrant .
-route del default
