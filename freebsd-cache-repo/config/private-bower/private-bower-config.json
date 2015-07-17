@@ -18,7 +18,7 @@
         "git": {
             "enabled": true,
             "cacheDirectory": "/usr/home/conan/private-bower/gitRepoCache",
-            "host": "10.0.0.2",
+            "host": "0.0.0.0",
             "port": 6789,
             "publicAccessURL" : "10.0.0.2:6789",
             "refreshTimeout": 10
@@ -26,7 +26,7 @@
         "svn": {
             "enabled": true,
             "cacheDirectory": "/usr/home/conan/private-bower/svnRepoCache",
-            "host": "10.0.0.2",
+            "host": "0.0.0.0",
             "port": 7891,
             "publicAccessURL" : "10.0.0.2:7891",
             "refreshTimeout": 10
