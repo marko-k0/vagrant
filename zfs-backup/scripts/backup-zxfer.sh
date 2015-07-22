@@ -1,6 +1,6 @@
 #!/usr/local/bin/bash
 #
-# Copyright (C) 2015 Marko Kosmerl (marko.kosmerl@gmail.com).
+# Copyright (C) 2015 Marko Kosmerl (mkosmerl@nucleuslabs.com).
 # 
 # This program is free software; you can redistribute it and/or modify 
 # it under the terms of the GNU General Public License as published by 
@@ -34,7 +34,22 @@ SSH_USER=backup
 LOGDIR=/var/log/backup
 PIDFILE=/var/run/backup-zxfer.pid
  
-while getopts :c:r:vd opt; do
+print_help() {
+echo -e \
+"
+ $0 -h
+ $0 -c <conf-file> -d -v
+ $0 -r <host>:<snapshot>:<dataset> -d -v
+
+  -h help
+  -c backup mode
+  -r restore mode
+  -d dry mode
+  -v verbose mode
+"
+}
+
+while getopts :c:r:vdh opt; do
   case $opt in
     c)
       CONFIG=$OPTARG
@@ -159,31 +174,29 @@ restore() {
 }
 
 run_zfs_restore() {
-	HOST=$1
-	SNAPSHOT=$2
-	ORIGINAL_DS=$3
-	RESTORE_DS=${3}_restore
-	BACKUP_DS=${3}_backup-$(date +%s)
+  HOST=$1
+  SNAPSHOT=$2
+  ORIGINAL_DS=$3
+  RESTORE_TIME=$(echo $SNAPSHOT | cut -d '@' -f 2)
+  RESTORE_DS=$3@$RESTORE_TIME
 
-	RESTORE_EXISTS=$(ssh $SSH_USER@$HOST -q "sudo zfs list -H $RESTORE_DS | grep $RESTORE_DS")
-	if [ -z "$RESTORE_EXISTS" ]
-	then	
-		run_cmd $1 "zfs send $SNAPSHOT | ssh $SSH_USER@$HOST -q sudo zfs recv -F $RESTORE_DS"
-	fi
+  LSNAPSHOT_EXISTS=$(zfs list -H $SNAPSHOT 2>/dev/null | grep $SNAPSHOT)
+  test -z "$LSNAPSHOT_EXISTS" && echo "Local snapshot $SNAPSHOT does not exists!" && exit
 
-	OPENED_FDS=$(ssh $SSH_USER@$1 -q "sudo fstat /$ORIGINAL_DS | grep $ORIGINAL_DS")
-	if [ -n "$OPENED_FDS" ]
-	then
-		echo "Opened file descriptors inside ${ORIGINAL_DS}. Take care of that and run again."
-	else
-		RESTORE_TIME=$(echo $SNAPSHOT | cut -d '@' -f 2)
+  DS_EXISTS=$(ssh $SSH_USER@$HOST -q "sudo zfs list -H $ORIGINAL_DS | grep $ORIGINAL_DS" 2>/dev/null)
+  test -z "$DS_EXISTS" && echo "Dataset $ORIGINAL_DS on host $HOST does not exists!" && exit
 
-		run_ssh_cmd $HOST "zfs rename $ORIGINAL_DS $BACKUP_DS"
-		run_ssh_cmd $HOST "zfs rename $RESTORE_DS $ORIGINAL_DS"
-		run_ssh_cmd $HOST "zfs rollback $ORIGINAL_DS@$RESTORE_TIME"
+  OPENED_FDS=$(ssh $SSH_USER@$HOST -q "sudo fstat -N / | grep /$ORIGINAL_DS")
+  test -n "$OPENED_FDS" && echo "Host $HOST has open file descriptors inside ${ORIGINAL_DS}:"
+  test -n "$OPENED_FDS" && echo $OPENED_FDS
+  test -n "$OPENED_FDS" && echo "Take care of that and run again." && exit
 
-		test -z "$DRYRUN" && echo "Manually delete ${BACKUP_DS} dataset."
-	fi
+  RSNAPSHOT_EXISTS=$(ssh $SSH_USER@$HOST -q "sudo zfs list -H $RESTORE_DS | grep $RESTORE_DS" 2> /dev/null)
+  test -n "$RSNAPSHOT_EXISTS" && echo "Remote snapshot $SNAPSHOT already exists."
+  test -n "$RSNAPSHOT_EXISTS" || run_ssh_cmd $HOST "zfs list -H -o name -t snapshot -d 1 $ORIGINAL_DS | xargs -n1 zfs destroy"
+  test -n "$RSNAPSHOT_EXISTS" || run_cmd $1 "zfs send $SNAPSHOT | ssh $SSH_USER@$HOST -q sudo zfs recv -F $RESTORE_DS"
+
+  run_ssh_cmd $HOST "zfs rollback -r $RESTORE_DS"
 }
 
 run_cmd() {
@@ -206,21 +219,6 @@ run_ssh_cmd() {
 		test -n "$RESTORE" && echo "ssh $SSH_USER@$1 -q \"echo '$2' | sudo sh\""
 		ssh $SSH_USER@$1 -q "echo '$2' | sudo sh" >> $LOGDIR/${1}.log 2>&1
 	fi
-}
-
-print_help() {
-echo -e \
-"
- $0 -h
- $0 -c <conf-file> -d -v
- $0 -r <host>:<snapshot>:<dataset> -d -v
-
-  -h help
-  -c backup mode
-  -r restore mode
-  -d dry mode
-  -v verbose mode
-"
 }
 
 main
