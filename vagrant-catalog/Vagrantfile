@@ -1,0 +1,25 @@
+# vim: ft=ruby
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "freebsd101"
+  config.vm.box_url = "http://iris.hosting.lv/freebsd-10.1-amd64.box"
+  config.vm.hostname = "vagrant-catalog"
+
+  # configure the nics
+  config.vm.provider :virtualbox do |vb|
+    vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+  end
+  
+  # use nfs for the synced folder
+  config.vm.synced_folder ".", "/vagrant", :nfs => true
+
+  config.vm.define "catalog" do |catalog|
+    catalog.vm.hostname = "vagrant-catalog"
+    catalog.vm.network "private_network", ip: "10.0.0.2"
+
+    catalog.vm.provision "shell" do |s|
+      s.path = "setup.sh"
+    end
+  end
+
+end
