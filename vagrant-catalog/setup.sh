@@ -2,9 +2,10 @@
 
 echo "Adding users and groups"
 pw group show operators >& /dev/null || pw groupadd operators
+pw usermod vagrant -G operators
 
 echo "Installing misc packages"
-pkg install -y vim curl wget git php56
+pkg install -y vim curl wget git php56 rsync
 pkg install -y openssl php56-json php56-phar php56-filter php56-hash php56-openssl php56-ctype php56-dom php56-tokenizer php56-simplexml php56-curl
 pkg install -y gmake lang/gcc48
 test -f /usr/local/bin/gcc || ln -s /usr/local/bin/gcc48 /usr/local/bin/gcc
