@@ -1,4 +1,4 @@
-# vagrant
+# Vagrant
 
 Sharing is caring. 
 
