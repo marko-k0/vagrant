@@ -1,0 +1,5 @@
+# vim:ft=ansible
+
+- include: play-controller.yml
+- include: play-network.yml
+- include: play-compute.yml

@@ -1,0 +1,36 @@
+# vim:ft=ansible
+
+- name: updating /etc/hosts file
+  lineinfile: dest=/etc/hosts regexp='{{ item.regexp }}' line='{{ item.line }}'
+  with_items:
+    - { regexp: '^{{ controller_mgmt_ip }}( |\t)+controller', line: '{{ controller_mgmt_ip }}  controller' }
+    - { regexp: '^{{ network_mgmt_ip }}( |\t)+network', line: '{{ network_mgmt_ip }}  network' }
+    - { regexp: '^{{ compute_mgmt_ip }}( |\t)+compute', line: '{{ compute_mgmt_ip }}  compute' }
+  sudo: True
+
+- name: set timezone
+  shell: timedatectl set-timezone {{ timezone }}
+  sudo: True
+  tags: [ntp, localtime]
+  sudo: True
+
+# TODO: /etc/ntp.conf
+
+- name: start ntpd service
+  service: name=ntpd enabled=yes state=started
+  sudo: True
+
+- name: disable SELinux
+  shell: "{{ item }}"
+  with_items:
+    - setenforce 0
+    - sed -i "/SELINUX=enforcing/c\SELINUX=disabled" /etc/selinux/config
+  sudo: True
+
+- name: copy openrc.sh files
+  copy: src={{ item }} dest=/home/vagrant/{{ item }} owner=root group=root mode=0644
+  with_items:
+    - admin-openrc.sh
+    - demo-openrc.sh
+  sudo: true
+

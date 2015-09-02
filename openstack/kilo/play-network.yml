@@ -1,0 +1,12 @@
+# vim: set ft=ansible
+
+- hosts: network
+
+  pre_tasks:
+    - name: set hostname
+      hostname: name=network  
+      sudo: true
+
+  roles:
+    - common
+    - { role: neutron, on_network: 1 }

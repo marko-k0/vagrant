@@ -1,0 +1,13 @@
+# vim:ft=ansible
+
+- hosts: compute
+
+  pre_tasks:
+    - name: set hostname
+      hostname: name=compute
+      sudo: true
+
+  roles:
+    - common
+    - { role: nova, on_compute: 1 }
+    - { role: neutron, on_compute: 1 }

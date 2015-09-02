@@ -1,0 +1,172 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure
+
+- name: check to see if keystone database was already created
+  stat: path=/tmp/.ansible-keystone-installed
+  register: keystone_touch
+
+- name: create keystone database
+  mysql_db: name=keystone state=present login_user=root login_password={{ ROOT_DBPASS }}
+  when: keystone_touch.stat.exists == false
+  sudo: true
+
+- name: grant access to the keystone database
+  mysql_user: name=keystone host="{{ item }}" password={{ KEYSTONE_DBPASS }} \
+        priv=keystone.*:ALL state=present login_user=root login_password={{ ROOT_DBPASS }}
+  with_items:
+    - localhost
+    - "%"
+  when: keystone_touch.stat.exists == false
+  sudo: true
+
+- name: install relevant packages
+  yum: name={{ item }} state=present
+  with_items:
+    - openstack-keystone
+    - httpd
+    - mod_wsgi
+    - python-openstackclient
+    - memcached
+    - python-memcached
+  sudo: true
+
+- name: enable and start memcached service
+  service: name=memcached enabled=yes state=started
+  sudo: true
+
+- name: configure keystone
+  shell: crudini --set /etc/keystone/keystone.conf {{ item.section }} {{ item.param }} "{{ item.value }}"
+  with_items:
+    - { section: 'DEFAULT', param: 'admin_token', value: '{{ ADMIN_TOKEN }}' }
+    - { section: 'DEFAULT', param: 'verbose', value: 'true' }
+    - { section: 'database', param: 'connection', value: 'mysql://keystone:{{ KEYSTONE_DBPASS }}@controller/keystone' }
+    - { section: 'memcache', param: 'servers', value: 'localhost:11211' }
+    - { section: 'token', param: 'provider', value: 'keystone.token.providers.uuid.Provider' }
+    - { section: 'token', param: 'driver', value: 'keystone.token.persistence.backends.memcache.Token' }
+    - { section: 'revoke', param: 'driver', value: 'keystone.contrib.revoke.backends.sql.Revoke' }
+  sudo: true
+  when: keystone_touch.stat.exists == false
+
+- name: populate identity service db
+  shell: su -s /bin/sh -c "keystone-manage db_sync" keystone
+  sudo: true
+  ignore_errors: true
+  when: keystone_touch.stat.exists == false
+
+- name: configure httpd.conf
+  lineinfile: dest=/etc/httpd/conf/httpd.conf state=present regexp='^#?ServerName' line='ServerName controller'
+  sudo: true
+  when: keystone_touch.stat.exists == false
+
+- name: copy wsgi-keystone.conf apache conf file
+  copy: src=wsgi-keystone.conf dest=/etc/httpd/conf.d/wsgi-keystone.conf owner=root group=root mode=0644
+  sudo: true
+  when: keystone_touch.stat.exists == false
+
+- name: setup wsgi components
+  shell: "{{ item }}"
+  with_items:
+    - mkdir -p /var/www/cgi-bin/keystone
+    - curl http://git.openstack.org/cgit/openstack/keystone/plain/httpd/keystone.py?h=stable/kilo \
+        | tee /var/www/cgi-bin/keystone/main /var/www/cgi-bin/keystone/admin
+    - chown -R keystone:keystone /var/www/cgi-bin/keystone
+    - chmod 755 /var/www/cgi-bin/keystone/*
+  sudo: true
+  when: keystone_touch.stat.exists == false
+
+- name: enable and start http server
+  service: name=httpd enabled=yes state=started
+  sudo: true
+
+# Create the service entity and API endpoint
+
+- name: create the service entity and API endpoint
+  shell: openstack service create --name keystone --description "OpenStack Identity" identity
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the identity service API endpoint
+  shell: openstack endpoint create --publicurl {{ PUBLIC_KEYSTONE_URL }} --internalurl \
+          {{ INTERNAL_KEYSTONE_URL }} --adminurl {{ ADMIN_KEYSTONE_URL }} --region RegionOne identity
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+# Create projects, users and roles
+
+- name: create the admin project
+  shell: openstack project create --description "Admin Project" admin
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the admin user
+  shell: openstack user create --password {{ ADMIN_PASS }} admin
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the admin role
+  shell: openstack role create admin
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: add admin role to the admin project and user
+  shell: openstack role add --project admin --user admin admin
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the service project
+  shell: openstack project create --description "Service Project" service
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the demo project
+  shell: openstack project create --description "Demo Project" demo
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the demo user
+  shell: openstack user create --password {{ DEMO_PASS }} demo
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: create the user role
+  shell: openstack role create user
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+
+- name: add user role to the demo project and user
+  shell: openstack role add --project demo --user demo user 
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: keystone_touch.stat.exists == false
+  
+- name: mark keystone service as installed
+  shell: touch /tmp/.ansible-keystone-installed
+  sudo: true
+
+

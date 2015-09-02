@@ -1,0 +1,71 @@
+# vim:ft=ruby
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+  config.vm.synced_folder ".", "/vagrant", :nfs => true
+
+  config.vm.define "controller" do |vb|
+    vb.vm.box = "centos/7"
+
+    vb.vm.provider :libvirt do |domain|
+      domain.memory = 4096
+      domain.cpus = 4
+      domain.nested = true
+    end
+    
+    # mgmt net
+    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => "10.0.0.11"
+
+    config.vm.provision "ansible" do |ansible|
+      ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
+      ansible.playbook = "play-controller.yml"
+    end
+  end
+
+  config.vm.define "network" do |vb|
+    vb.vm.box = "centos/7"
+
+    vb.vm.provider :libvirt do |domain|
+      domain.memory = 2048 
+      domain.cpus = 2
+      domain.nested = true
+    end
+    
+    # mgmt net
+    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => "10.0.0.21"
+    # tunnel net
+    vb.vm.network :private_network, :libvirt__adapter => 2, :ip => "10.0.1.21"
+    # ext net
+    #vb.vm.network :public_network, :libvirt__adapter => 3, :ip => "192.168.122.21", :libvirt__network_name => "default"
+    #vb.vm.network :public_network, :libvirt__adapter => 3, :mode => "bridge", :libvirt__dhcp_enabled => false
+
+    config.vm.provision "ansible" do |ansible|
+      ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
+      ansible.playbook = "play-network.yml"
+    end
+  end
+
+  config.vm.define "compute" do |vb|
+    vb.vm.box = "centos/7"
+    vb.vm.provider :libvirt do |domain|
+      domain.memory = 4096
+      domain.cpus = 4
+      domain.nested = true
+    end
+
+    # mgmt net
+    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => "10.0.0.31"
+    # tun net
+    vb.vm.network :private_network, :libvirt__adapter => 2, :ip => "10.0.1.31"
+    # storage net
+    #vb.vm.network :private_network, :libvirt__adapter => 3, :ip => "10.0.2.31"
+
+    config.vm.provision "ansible" do |ansible|
+      ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
+      ansible.playbook = "play-compute.yml"
+    end
+  end
+
+end

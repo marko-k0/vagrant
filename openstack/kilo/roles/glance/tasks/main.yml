@@ -1,0 +1,138 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure
+
+- name: check to see if glance database was already created
+  stat: path=/tmp/.ansible-glance-installed
+  register: glance_touch
+
+- name: create glance database
+  mysql_db: name=glance state=present login_user=root login_password={{ ROOT_DBPASS }}
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: grant access to the glance database
+  mysql_user: name=glance host={{ item }} password={{ ROOT_DBPASS }} \
+        priv=glance.*:ALL state=present login_user=root login_password={{ ROOT_DBPASS }}
+  with_items:
+    - localhost
+    - '%'
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: create the glance user
+  shell: openstack user create --password {{ GLANCE_PASS }} glance
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: glance_touch.stat.exists == false
+
+- name: add admin role to the glance user and service project
+  shell: openstack role add --project service --user glance admin
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: glance_touch.stat.exists == false
+
+- name: create the glance service entity
+  shell: openstack service create --name glance --description "OpenStack Image service" image
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: glance_touch.stat.exists == false
+
+- name: create the image service API endpoint
+  shell: openstack endpoint create --publicurl {{ PUBLIC_GLANCE_URL }} --internalurl \
+          {{ INTERNAL_GLANCE_URL }} --adminurl {{ ADMIN_GLANCE_URL }} --region RegionOne image
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: glance_touch.stat.exists == false
+
+- name: install relevant packages
+  yum: name={{ item }} state=present
+  with_items:
+    - openstack-glance
+    - python-glance
+    - python-glanceclient
+  sudo: true
+
+- name: clear nova keystone_authtoken settings in glance-api.conf
+  shell: crudini --del /etc/glance/glance-api.conf keystone_authtoken
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: configure glance api
+  shell: crudini --set /etc/glance/glance-api.conf {{ item.section }} {{ item.param }} "{{ item.value }}"
+  with_items:
+    - { section: 'database', param: 'connection', value: 'mysql://glance:{{ GLANCE_DBPASS }}@controller/glance' }
+    - { section: 'keystone_authtoken', param: 'auth_uri', value: 'http://controller:5000' }
+    - { section: 'keystone_authtoken', param: 'auth_url', value: 'http://controller:35357' }
+    - { section: 'keystone_authtoken', param: 'auth_plugin', value: 'password' }
+    - { section: 'keystone_authtoken', param: 'project_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'user_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'project_name', value: 'service' }
+    - { section: 'keystone_authtoken', param: 'username', value: 'glance' }
+    - { section: 'keystone_authtoken', param: 'password', value: '{{ GLANCE_PASS }}' }
+    - { section: 'paste_deploy', param: 'flavor', value: 'keystone' }
+    - { section: 'glance_store', param: 'default_store', value: 'file' }
+    - { section: 'glance_store', param: 'filesystem_store_datadir', value: '/var/lib/glance/images/' }
+    - { section: 'DEFAULT', param: 'notification_driver', value: 'noop' }
+    - { section: 'DEFAULT', param: 'verbose', value: 'True' }
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: clear nova keystone_authtoken settings in glance-registry.conf
+  shell: crudini --del /etc/glance/glance-registry.conf keystone_authtoken
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: configure glance registry
+  shell: crudini --set /etc/glance/glance-registry.conf {{ item.section }} {{ item.param }} "{{ item.value }}"
+  with_items:
+    - { section: 'database', param: 'connection', value: 'mysql://glance:{{ GLANCE_DBPASS }}@controller/glance' }
+    - { section: 'keystone_authtoken', param: 'auth_uri', value: 'http://controller:5000' }
+    - { section: 'keystone_authtoken', param: 'auth_url', value: 'http://controller:35357' }
+    - { section: 'keystone_authtoken', param: 'auth_plugin', value: 'password' }
+    - { section: 'keystone_authtoken', param: 'project_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'user_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'project_name', value: 'service' }
+    - { section: 'keystone_authtoken', param: 'username', value: 'glance' }
+    - { section: 'keystone_authtoken', param: 'password', value: '{{ GLANCE_PASS }}' }
+    - { section: 'paste_deploy', param: 'flavor', value: 'keystone' }
+    - { section: 'DEFAULT', param: 'notification_driver', value: 'noop' }
+    - { section: 'DEFAULT', param: 'verbose', value: 'True' }
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: populate glance service db
+  shell: su -s /bin/sh -c "glance-manage db_sync" glance
+  sudo: true
+  ignore_errors: true
+
+- name: enable and start openstack-glance-api service
+  service: name=openstack-glance-api enabled=yes state=started
+  sudo: true
+
+- name: enable and start openstack-glance-registry service
+  service: name=openstack-glance-registry enabled=yes state=started
+  sudo: true
+
+- name: mark glance service as created
+  shell: touch /tmp/.ansible-glance-installed
+  sudo: true
+
+# Verify operation
+
+- name: copy add-img.sh script 
+  copy: src=add-img.sh dest=/home/vagrant/add-img.sh owner=root group=root mode=0644
+  sudo: true
+
+#- name: upload image to the image service with add-img.sh script
+#  shell: sh /home/vagrant/add-img.sh
+#  sudo: true
+

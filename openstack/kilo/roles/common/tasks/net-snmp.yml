@@ -1,0 +1,24 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure net-snmp
+
+- name: install net-snmp
+  yum: name=net-snmp state=present
+  sudo: True
+  tags: snmp
+
+- name: check if snmpd.conf exists
+  stat: path=/etc/snmp/snmpd.conf
+  register: st
+
+- name: template snmpd.conf
+  template: src=snmpd-template.conf dest=/etc/snmp/snmpd.conf owner=root group=wheel mode=640
+  sudo: True
+
+- name: enable snmpd service
+  service: name=snmpd enabled=yes state=started
+  sudo: True

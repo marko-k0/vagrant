@@ -1,0 +1,4 @@
+#!/bin/bash
+
+ovs-vsctl add-port br-ex {{ ext_ifce }}
+reboot -f

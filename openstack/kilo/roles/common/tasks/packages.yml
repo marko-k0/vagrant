@@ -1,0 +1,22 @@
+# vim:ft=ansible
+
+- name: upgrade packages
+  yum: name=* state=latest
+  sudo: true
+
+- name: install common packages
+  yum: name={{ item }} state=present
+  with_items:
+    - bridge-utils
+    - tcpdump
+    - wget
+    - vim
+    - ntp
+    - "{{ rdo_repo }}"
+    - openstack-selinux
+    - openstack-utils
+    - crudini
+    - mariadb
+    - MySQL-python
+  sudo: true
+

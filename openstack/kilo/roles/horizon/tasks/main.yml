@@ -1,0 +1,56 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Common tasks for all nodes
+
+- name: check to see if horizon was already installed
+  stat: path=/tmp/.ansible-horizon-installed
+  register: horizon_touch
+
+- name: install relevant packages
+  yum: name={{ item }} state=present
+  with_items:
+    - openstack-dashboard
+    - httpd
+    - mod_wsgi
+    - memcached
+    - python-memcached
+  when: horizon_touch.stat.exists == false
+  sudo: true
+
+- name: configure the dashboard
+  template: src=dashboard_local_settings dest=/etc/openstack-dashboard/local_settings owner=root group=root mode=0640
+  when: horizon_touch.stat.exists == false
+  sudo: true
+
+- name: configure selinux to permit the web server to connect to openstack services
+  shell: sestatus | grep disabled > /dev/null || setsebool -P httpd_can_network_connect on
+  when: horizon_touch.stat.exists == false
+  sudo: true
+
+- name: resovlve dashboard css bug
+  shell: chown -R apache:apache /usr/share/openstack-dashboard/static
+  when: horizon_touch.stat.exists == false
+  sudo: true
+
+- name: enable and start web server and session storage service
+  service: name={{ item }} enabled=yes state=restarted
+  with_items:
+    - httpd
+    - memcached
+  when: horizon_touch.stat.exists == false
+  sudo: true
+
+#TODO: this might not be good
+- name: resovlve dashboard css bug
+  shell: chown -R apache:apache /usr/share/openstack-dashboard
+  when: horizon_touch.stat.exists == false
+  sudo: true
+
+- name: mark horizon service as installed
+  shell: touch /tmp/.ansible-horizon-installed
+  sudo: true
+

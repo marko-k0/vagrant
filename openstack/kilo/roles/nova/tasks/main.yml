@@ -1,0 +1,176 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure controller node
+
+- name: check to see if nova was already installed
+  stat: path=/tmp/.ansible-nova-installed
+  register: nova_touch
+
+- name: create nova database
+  mysql_db: name=nova state=present login_user=root login_password={{ ROOT_DBPASS }}
+  when: nova_touch.stat.exists == false and on_controller is defined
+  sudo: true
+
+- name: grant access to the nova database
+  mysql_user: name=nova host={{ item }} password={{ ROOT_DBPASS }} \
+        priv=nova.*:ALL state=present login_user=root login_password={{ ROOT_DBPASS }}
+  with_items:
+    - localhost
+    - '%'
+  when: nova_touch.stat.exists == false and on_controller is defined
+  sudo: true
+
+- name: create the nova user
+  shell: openstack user create --password {{ NOVA_PASS }} nova
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: nova_touch.stat.exists == false and on_controller is defined
+
+- name: add admin role to the nova user and service project
+  shell: openstack role add --project service --user nova admin
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: nova_touch.stat.exists == false and on_controller is defined
+
+- name: create the nova service entity
+  shell: openstack service create --name nova --description "OpenStack Image service" compute
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: nova_touch.stat.exists == false and on_controller is defined
+
+- name: install relevant packages
+  yum: name={{ item }} state=present
+  with_items:
+    - openstack-nova-api
+    - openstack-nova-cert
+    - openstack-nova-conductor
+    - openstack-nova-console
+    - openstack-nova-novncproxy
+    - openstack-nova-scheduler
+    - python-novaclient
+  when: nova_touch.stat.exists == false and on_controller is defined
+  sudo: true
+
+- name: clear nova keystone_authtoken settings
+  shell: crudini --del /etc/nova/nova.conf keystone_authtoken
+  when: nova_touch.stat.exists == false and on_controller is defined
+  sudo: true
+
+- name: configure nova controller components
+  shell: crudini --set /etc/nova/nova.conf {{ item.section }} {{ item.param }} "{{ item.value }}"
+  with_items:
+    - { section: 'database', param: 'connection', value: 'mysql://nova:{{ NOVA_DBPASS }}@controller/nova' }
+    - { section: 'DEFAULT', param: 'rpc_backend', value: 'rabbit' }
+    - { section: 'oslo_messaging_rabbit', param: 'rabbit_host', value: 'controller' }
+    - { section: 'oslo_messaging_rabbit', param: 'rabbit_userid', value: 'openstack' }
+    - { section: 'oslo_messaging_rabbit', param: 'rabbit_password', value: '{{ RABBIT_PASS }}' }
+    - { section: 'DEFAULT', param: 'auth_strategy', value: 'keystone' }
+    - { section: 'keystone_authtoken', param: 'auth_uri', value: 'http://controller:5000' }
+    - { section: 'keystone_authtoken', param: 'auth_url', value: 'http://controller:35357' }
+    - { section: 'keystone_authtoken', param: 'auth_plugin', value: 'password' }
+    - { section: 'keystone_authtoken', param: 'project_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'user_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'project_name', value: 'service' }
+    - { section: 'keystone_authtoken', param: 'username', value: 'nova' }
+    - { section: 'keystone_authtoken', param: 'password', value: '{{ NOVA_PASS }}' }
+    - { section: 'DEFAULT', param: 'my_ip', value: '{{ controller_mgmt_ip }}' }
+    - { section: 'DEFAULT', param: 'vncserver_listen', value: '{{ controller_mgmt_ip }}' }
+    - { section: 'DEFAULT', param: 'vncserver_proxyclient_address', value: '{{ controller_mgmt_ip }}' }
+    - { section: 'glance', param: 'host', value: 'controller' }
+    - { section: 'oslo_concurrency', param: 'lock_path', value: '/var/lib/nova/tmp' }
+    - { section: 'DEFAULT', param: 'verbose', value: 'True' }
+  when: nova_touch.stat.exists == false and on_controller is defined
+  sudo: true
+
+- name: populate compute database
+  shell: su -s /bin/sh -c "nova-manage db sync" nova
+  sudo: true
+  ignore_errors: true
+  when: nova_touch.stat.exists == false and on_controller is defined
+
+- name: enable and start openstack nova services
+  service: name={{ item }} enabled=yes state=started
+  with_items:
+    - openstack-nova-api
+    - openstack-nova-cert
+    - openstack-nova-consoleauth
+    - openstack-nova-scheduler
+    - openstack-nova-conductor
+    - openstack-nova-novncproxy
+  sudo: true
+  when: nova_touch.stat.exists == false and on_controller is defined
+
+- name: create the compute service API endpoint
+  shell: openstack endpoint create --publicurl "{{ PUBLIC_NOVA_URL }}" --internalurl "{{ INTERNAL_NOVA_URL }}" --adminurl "{{ ADMIN_NOVA_URL }}" --region RegionOne compute
+  environment:
+    OS_TOKEN: "{{ ADMIN_TOKEN }}"
+    OS_URL: "{{ ADMIN_KEYSTONE_URL }}"
+  when: nova_touch.stat.exists == false and on_controller is defined
+
+- name: mark nova service as installed
+  shell: touch /tmp/.ansible-nova-installed
+  sudo: true
+  when: on_controller is defined
+
+# Install and configure compute node
+
+- name: install relevant packages
+  yum: name={{ item }} state=present
+  with_items:
+    - openstack-nova-compute
+    - sysfsutils
+  sudo: true
+  when: nova_touch.stat.exists == false and on_compute is defined
+
+- name: clear nova keystone_authtoken settings in nova.conf
+  shell: crudini --del /etc/nova/nova.conf keystone_authtoken
+  when: nova_touch.stat.exists == false and on_compute is defined
+  sudo: true
+
+- name: configure nova compute components
+  shell: crudini --set /etc/nova/nova.conf {{ item.section }} {{ item.param }} "{{ item.value }}"
+  with_items:
+    - { section: 'DEFAULT', param: 'rpc_backend', value: 'rabbit' }
+    - { section: 'oslo_messaging_rabbit', param: 'rabbit_host', value: 'controller' }
+    - { section: 'oslo_messaging_rabbit', param: 'rabbit_userid', value: 'openstack' }
+    - { section: 'oslo_messaging_rabbit', param: 'rabbit_password', value: '{{ RABBIT_PASS }}' }
+    - { section: 'DEFAULT', param: 'auth_strategy', value: 'keystone' }
+    - { section: 'keystone_authtoken', param: 'auth_uri', value: 'http://controller:5000' }
+    - { section: 'keystone_authtoken', param: 'auth_url', value: 'http://controller:35357' }
+    - { section: 'keystone_authtoken', param: 'auth_plugin', value: 'password' }
+    - { section: 'keystone_authtoken', param: 'project_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'user_domain_id', value: 'default' }
+    - { section: 'keystone_authtoken', param: 'project_name', value: 'service' }
+    - { section: 'keystone_authtoken', param: 'username', value: 'nova' }
+    - { section: 'keystone_authtoken', param: 'password', value: '{{ NOVA_PASS }}' }
+    - { section: 'DEFAULT', param: 'my_ip', value: '{{ compute_mgmt_ip }}' }
+    - { section: 'DEFAULT', param: 'vnc_enabled', value: 'True' }
+    - { section: 'DEFAULT', param: 'vncserver_listen', value: '0.0.0.0' }
+    - { section: 'DEFAULT', param: 'vncserver_proxyclient_address', value: '{{ compute_mgmt_ip }}' }
+    - { section: 'DEFAULT', param: 'novncproxy_base_url', value: 'http://controller:6080/vnc_auto.html' }
+    - { section: 'glance', param: 'host', value: 'controller' }
+    - { section: 'oslo_concurrency', param: 'lock_path', value: '/var/lib/nova/tmp' }
+    - { section: 'DEFAULT', param: 'verbose', value: 'True' }
+  sudo: true
+  when: nova_touch.stat.exists == false and on_compute is defined
+
+- name: enable and start compute service
+  service: name={{ item }} enabled=yes state=started
+  with_items:
+    - libvirtd
+    - openstack-nova-compute
+  sudo: true
+  when: nova_touch.stat.exists == false and on_compute is defined
+
+- name: mark nova service as installed
+  shell: touch /tmp/.ansible-nova-installed
+  sudo: true
+  when: on_compute is defined
+

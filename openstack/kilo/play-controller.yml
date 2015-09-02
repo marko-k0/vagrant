@@ -1,0 +1,18 @@
+# vim:ft=ansible
+
+- hosts: controller
+
+  pre_tasks:
+    - name: set hostname
+      hostname: name=controller
+      sudo: true
+
+  roles:
+    - common
+    - mariadb
+    - rabbitmq
+    - keystone
+    - glance
+    - { role: nova, on_controller: 1 }
+    - { role: neutron, on_controller: 1 }
+    - horizon

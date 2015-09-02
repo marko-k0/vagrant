@@ -1,0 +1,38 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure rabbitmq
+
+- name: check to see if rabbitmq was already installed
+  stat: path=/tmp/.ansible-rabbitmq-installed
+  register: rabbitmq_touch
+
+- name: install rabbitmq-server
+  yum: name=rabbitmq-server state=present
+  when: rabbitmq_touch.stat.exists == false
+  sudo: true
+
+- name: enable and start rabbitmq service
+  service: name=rabbitmq-server enabled=yes state=started
+  when: rabbitmq_touch.stat.exists == false
+  sudo: true
+
+- name: setup rabbitmq openstack user
+  shell: "{{ item }}"
+  with_items:
+    - rabbitmqctl add_user openstack {{ RABBIT_PASS }}
+    - rabbitmqctl set_permissions openstack ".*" ".*" ".*"
+  when: rabbitmq_touch.stat.exists == false
+  sudo: true
+
+- name: enable and start rabbitmq service
+  service: name=rabbitmq-server state=restarted
+  when: rabbitmq_touch.stat.exists == false
+  sudo: true
+
+- name: rabbitmq-server fully installed
+  shell: touch /tmp/.ansible-rabbitmq-installed
+  sudo: true

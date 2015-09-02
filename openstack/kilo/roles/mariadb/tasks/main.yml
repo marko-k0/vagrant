@@ -1,0 +1,82 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure mariadb-server
+
+- name: install mariadb-server
+  yum: name=mariadb-server state=present
+  sudo: true
+
+- name: configure mysql server.cnf
+  shell: touch /etc/my.cnf.d/mariadb_openstack.cnf && crudini --set /etc/my.cnf.d/mariadb_openstack.cnf mysqld {{ item.param }} '"{{ item.value }}"'
+  with_items:
+    - { param: 'bind-address', value: '{{ controller_mgmt_ip }}' }
+    - { param: 'default-storage-engine', value: 'innodb' }
+    - { param: 'innodb_file_per_table', value: '1' }
+    - { param: 'collation-server', value: 'utf8_general_ci' }
+    - { param: 'init-connect', value: 'SET NAMES utf8' }
+    - { param: 'character-set-server', value: 'utf8' }
+  sudo: true
+
+- name: enable and start mariadb service
+  service: name=mariadb enabled=yes state=started
+  sudo: true
+
+- name: check to see if mysql was fully installed
+  stat: path=/tmp/.ansible-db-installed
+  register: db_touch
+
+- name: delete anonymous mariadb user ''@'controller'
+  mysql_user: user="" state=absent host="controller"
+  when: db_touch.stat.exists == false
+  sudo: true
+
+- name: delete mariadb user 'root'@'controller'
+  mysql_user: user="root" state=absent host="controller"
+  when: db_touch.stat.exists == false
+  sudo: true
+ 
+- name: delete anonymous mariadb user for localhost
+  mysql_user: user="" state=absent
+  when: db_touch.stat.exists == false
+  sudo: true
+
+- name: remove the mariadb test database
+  mysql_db: db=test state=absent
+  when: db_touch.stat.exists == false
+  sudo: true
+   
+- name: change root user password
+  mysql_user: login_user=root
+              login_password=''
+              name=root
+              password={{ ROOT_DBPASS }}
+              priv=*.*:ALL,GRANT
+              host=localhost
+  when: db_touch.stat.exists == false
+  sudo: true
+
+- name: change root user password (localhost)
+  mysql_user: login_user=root
+              login_password='{{ ROOT_DBPASS }}'
+              name=root
+              password={{ ROOT_DBPASS }}
+              priv=*.*:ALL,GRANT
+              host={{ item }}
+  with_items:
+    - "{{ ansible_hostname }}"
+    - 127.0.0.1
+    - ::1
+  when: db_touch.stat.exists == false
+  sudo: true
+
+- name: database fully installed
+  shell: touch /tmp/.ansible-db-installed
+  sudo: true
+
+- name: restart mariadb service
+  service: name=mariadb enabled=yes state=restarted
+  sudo: true
