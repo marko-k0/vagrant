@@ -10,3 +10,7 @@ and [Composer/NPM/Bower cache server](http://blog.redondo.si/blog/2015/05/25/com
 ## Vagrant Catalog
 
 Simple and quick way of having [Private Vagrant Cloud](http://blog.redondo.si/blog/2015/08/13/private-vagrant-cloud/).
+
+## OpenStack
+
+OpenStack in Vagrant environment.
