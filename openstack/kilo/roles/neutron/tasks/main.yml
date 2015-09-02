@@ -522,7 +522,7 @@
   delegate_to: controller
 
 - name: add external eth to br-ex in network node and restart
-  shell: nohup /home/vagrant/reboot-net-node.sh 0<&- &>/dev/null &
+  shell: nohup sh /home/vagrant/reboot-net-node.sh 0<&- &>/dev/null &
   when: neutron_touch.stat.exists == false and on_compute is defined
   sudo: true
   delegate_to: network
