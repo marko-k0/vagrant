@@ -1,3 +1,11 @@
+# vim:ft=ansible
+
+# Load global vars
+
+- include_vars: ../../../misc/global-vars.yml
+
+# Install and configure the basics
+
 - include: packages.yml
 - include: config.yml
 - include: net-snmp.yml

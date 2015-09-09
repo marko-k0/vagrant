@@ -15,5 +15,5 @@ glance image-create --name "cirros-0.3.4-x86_64" --file /tmp/images/cirros-0.3.4
 
 glance image-list
 
-openstack endpoint delete $(openstack endpoint show -c id -f value compute)
-openstack endpoint create --publicurl="http://controller:8774/v2/%(tenant_id)s" --internalurl="http://controller:8774/v2/%(tenant_id)s" --adminurl="http://controller:8774/v2/%(tenant_id)s" --region RegionOne compute
+#openstack endpoint delete $(openstack endpoint show -c id -f value compute)
+#openstack endpoint create --publicurl="http://controller:8774/v2/%(tenant_id)s" --internalurl="http://controller:8774/v2/%(tenant_id)s" --adminurl="http://controller:8774/v2/%(tenant_id)s" --region RegionOne compute

@@ -6,12 +6,12 @@ snmp_syslocation: Vancouver
 snmp_syscontact: admin@iloveopenstack.com
 snmp_community: juststackit
 
-mgmt_network: "10.0.0.11"
+mgmt_network: "10.0.0.0"
 mgmt_netmask: "255.255.255.0"
 tun_network: "10.0.1.0"
 tun_netmask: "255.255.255.0"
 
-controller_mgmt_ip: "10.0.0.11"
+controller_mgmt_ip: "10.0.0.21"
 network_mgmt_ip: "10.0.0.21"
 network_tun_ip: "10.0.1.21"
 compute_mgmt_ip: "10.0.0.31"

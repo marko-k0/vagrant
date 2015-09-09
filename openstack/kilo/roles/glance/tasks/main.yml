@@ -122,17 +122,18 @@
   service: name=openstack-glance-registry enabled=yes state=started
   sudo: true
 
-- name: mark glance service as created
-  shell: touch /tmp/.ansible-glance-installed
-  sudo: true
-
 # Verify operation
 
 - name: copy add-img.sh script 
   copy: src=add-img.sh dest=/home/vagrant/add-img.sh owner=root group=root mode=0644
   sudo: true
 
-#- name: upload image to the image service with add-img.sh script
-#  shell: sh /home/vagrant/add-img.sh
-#  sudo: true
+- name: upload image to the image service with add-img.sh script
+  shell: sh /home/vagrant/add-img.sh
+  when: glance_touch.stat.exists == false
+  sudo: true
+
+- name: mark glance service as created
+  shell: touch /tmp/.ansible-glance-installed
+  sudo: true
 

@@ -1,11 +1,17 @@
 # vim:ft=ruby
 
+require 'yaml'
+
+current_dir = File.dirname(File.expand_path(__FILE__))
+configs     = YAML.load_file("#{current_dir}/misc/global-vars.yml")
+
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   config.vm.synced_folder ".", "/vagrant", :nfs => true
 
+  # CONTROLLER
   config.vm.define "controller" do |vb|
     vb.vm.box = "centos/7"
 
@@ -16,37 +22,45 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
     
     # mgmt net
-    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => "10.0.0.11"
+    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs['controller_mgmt_ip']
+
+    # set tunnel network if network is on controller node
+    if configs['controller_mgmt_ip'].eql? configs['network_mgmt_ip']
+      # tunnel net
+      vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs['network_tun_ip']
+    end
 
     config.vm.provision "ansible" do |ansible|
       ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
       ansible.playbook = "play-controller.yml"
     end
+
   end
 
-  config.vm.define "network" do |vb|
-    vb.vm.box = "centos/7"
+  # NETWORK (unless already on CONTROLLER)
+  unless configs['controller_mgmt_ip'].eql? configs['network_mgmt_ip']
+    config.vm.define "network" do |vb|
+      vb.vm.box = "centos/7"
 
-    vb.vm.provider :libvirt do |domain|
-      domain.memory = 2048 
-      domain.cpus = 2
-      domain.nested = true
-    end
-    
-    # mgmt net
-    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => "10.0.0.21"
-    # tunnel net
-    vb.vm.network :private_network, :libvirt__adapter => 2, :ip => "10.0.1.21"
-    # ext net
-    #vb.vm.network :public_network, :libvirt__adapter => 3, :ip => "192.168.122.21", :libvirt__network_name => "default"
-    #vb.vm.network :public_network, :libvirt__adapter => 3, :mode => "bridge", :libvirt__dhcp_enabled => false
+      vb.vm.provider :libvirt do |domain|
+        domain.memory = 2048 
+        domain.cpus = 2 
+        domain.nested = true
+      end 
 
-    config.vm.provision "ansible" do |ansible|
-      ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
-      ansible.playbook = "play-network.yml"
+      # mgmt net
+      vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs['network_mgmt_ip']
+      # tunnel net
+      vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs['network_tun_ip']
+
+      config.vm.provision "ansible" do |ansible|
+        ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
+        ansible.playbook = "play-network.yml"
+      end 
     end
   end
 
+  # COMPUTE
   config.vm.define "compute" do |vb|
     vb.vm.box = "centos/7"
     vb.vm.provider :libvirt do |domain|
@@ -56,11 +70,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     # mgmt net
-    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => "10.0.0.31"
+    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs['compute_mgmt_ip']
     # tun net
-    vb.vm.network :private_network, :libvirt__adapter => 2, :ip => "10.0.1.31"
-    # storage net
-    #vb.vm.network :private_network, :libvirt__adapter => 3, :ip => "10.0.2.31"
+    vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs['compute_tun_ip']
 
     config.vm.provision "ansible" do |ansible|
       ansible.extra_vars = { ansible_ssh_user: 'vagrant' }

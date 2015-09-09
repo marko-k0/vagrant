@@ -16,3 +16,4 @@
     - { role: nova, on_controller: 1 }
     - { role: neutron, on_controller: 1 }
     - horizon
+    - { role: neutron, on_network: 1, when: controller_mgmt_ip == network_mgmt_ip }
