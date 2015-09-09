@@ -2,5 +2,5 @@
 
 ## Kilo
 
-OpenStack on 3 nodes under Vagrant.
+OpenStack on 2 or 3 nodes under Vagrant.
 
