@@ -18,13 +18,14 @@ compute_mgmt_ip: "10.0.0.31"
 compute_tun_ip: "10.0.1.31"
 db_host: "controller"
 
-ext_ifce: "eth0"
-ext_ip: "192.168.121.26"
 ext_net: "192.168.121.0/24"
 ext_msk: "255.255.255.0"
 ext_aps: "192.168.121.200"
 ext_ape: "192.168.121.220"
 ext_gw: "192.168.121.1"
+ext_ifce: "eth0"
+ext_network_ip: "192.168.121.26"
+ext_compute_ip: "192.168.121.27"
 
 rdo_repo: "http://rdo.fedorapeople.org/openstack-kilo/rdo-release-kilo.rpm"
 
