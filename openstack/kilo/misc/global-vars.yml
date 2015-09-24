@@ -14,9 +14,11 @@ tun_netmask: "255.255.255.0"
 controller_mgmt_ip: "10.0.0.21"
 network_mgmt_ip: "10.0.0.21"
 network_tun_ip: "10.0.1.21"
-compute_mgmt_ip: "10.0.0.31"
-compute_tun_ip: "10.0.1.31"
-db_host: "controller"
+compute_nodes: 2
+compute1_mgmt_ip: "10.0.0.31"
+compute1_tun_ip: "10.0.1.31"
+compute2_mgmt_ip: "10.0.0.32"
+compute2_tun_ip: "10.0.1.32"
 
 ext_net: "192.168.121.0/24"
 ext_msk: "255.255.255.0"
@@ -25,7 +27,7 @@ ext_ape: "192.168.121.220"
 ext_gw: "192.168.121.1"
 ext_ifce: "eth0"
 ext_network_ip: "192.168.121.26"
-ext_compute_ip: "192.168.121.27"
+#ext_compute_ip: "192.168.121.27"
 
 rdo_repo: "http://rdo.fedorapeople.org/openstack-kilo/rdo-release-kilo.rpm"
 

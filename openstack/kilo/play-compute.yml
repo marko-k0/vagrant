@@ -1,10 +1,10 @@
 # vim:ft=ansible
 
-- hosts: compute
+- hosts: compute*
 
   pre_tasks:
     - name: set hostname
-      hostname: name=compute
+      hostname: name={{ inventory_hostname }}
       sudo: true
 
   roles:

@@ -60,23 +60,25 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   end
 
-  # COMPUTE
-  config.vm.define "compute" do |vb|
-    vb.vm.box = "centos/7"
-    vb.vm.provider :libvirt do |domain|
-      domain.memory = 4096
-      domain.cpus = 4
-      domain.nested = true
-    end
+  # COMPUTE NODES
+  (1..configs['compute_nodes']).each do |i|
+    config.vm.define "compute#{i}" do |vb|
+      vb.vm.box = "centos/7"
+      vb.vm.provider :libvirt do |domain|
+        domain.memory = 4096
+        domain.cpus = 4
+        domain.nested = true
+      end
 
-    # mgmt net
-    vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs['compute_mgmt_ip']
-    # tun net
-    vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs['compute_tun_ip']
+      # mgmt net
+      vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs["compute#{i}_mgmt_ip"]
+      # tun net
+      vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs["compute#{i}_tun_ip"]
 
-    config.vm.provision "ansible" do |ansible|
-      ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
-      ansible.playbook = "play-compute.yml"
+      config.vm.provision "ansible" do |ansible|
+        ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
+        ansible.playbook = "play-compute.yml"
+      end
     end
   end
 
