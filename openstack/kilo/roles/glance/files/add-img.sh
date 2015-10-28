@@ -1,6 +1,7 @@
 #!/bin/sh
 
-source ./admin-openrc.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source $DIR/admin-openrc.sh
 
 mkdir -p /tmp/images
 

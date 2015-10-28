@@ -28,6 +28,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     if configs['controller_mgmt_ip'].eql? configs['network_mgmt_ip']
       # tunnel net
       vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs['network_tun_ip']
+      # vlan net
+      vb.vm.network :private_network, :libvirt__adapter => 3, :ip => '0.0.0.0'
     end
 
     config.vm.provision "ansible" do |ansible|
@@ -52,6 +54,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs['network_mgmt_ip']
       # tunnel net
       vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs['network_tun_ip']
+      # vlan net
+      vb.vm.network :private_network, :libvirt__adapter => 3, :ip => '0.0.0.0'
 
       config.vm.provision "ansible" do |ansible|
         ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
@@ -74,6 +78,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       vb.vm.network :private_network, :libvirt__adapter => 1, :ip => configs["compute#{i}_mgmt_ip"]
       # tun net
       vb.vm.network :private_network, :libvirt__adapter => 2, :ip => configs["compute#{i}_tun_ip"]
+      # vlan net
+      vb.vm.network :private_network, :libvirt__adapter => 3, :ip => '0.0.0.0'
 
       config.vm.provision "ansible" do |ansible|
         ansible.extra_vars = { ansible_ssh_user: 'vagrant' }

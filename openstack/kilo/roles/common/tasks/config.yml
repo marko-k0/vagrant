@@ -5,7 +5,10 @@
   with_items:
     - { regexp: '^{{ controller_mgmt_ip }}( |\t)+controller', line: '{{ controller_mgmt_ip }}  controller' }
     - { regexp: '^{{ network_mgmt_ip }}( |\t)+network', line: '{{ network_mgmt_ip }}  network' }
-    - { regexp: '^{{ compute_mgmt_ip }}( |\t)+compute', line: '{{ compute_mgmt_ip }}  compute' }
+    - { regexp: '^{{ compute1_mgmt_ip }}( |\t)+compute', line: '{{ compute1_mgmt_ip }}  compute1' }
+    - { regexp: '^{{ compute2_mgmt_ip }}( |\t)+compute', line: '{{ compute2_mgmt_ip }}  compute2' }
+    - { regexp: '^{{ compute3_mgmt_ip }}( |\t)+compute', line: '{{ compute3_mgmt_ip }}  compute3' }
+    - { regexp: '^{{ compute4_mgmt_ip }}( |\t)+compute', line: '{{ compute4_mgmt_ip }}  compute4' }
   sudo: True
 
 - name: set timezone
@@ -19,6 +22,10 @@
 - name: start ntpd service
   service: name=ntpd enabled=yes state=started
   sudo: True
+  
+- name: disable firewalld
+  service: name=firewalld enabled=no state=stopped
+  sudo: True
 
 - name: disable SELinux
   shell: "{{ item }}"
@@ -28,7 +35,7 @@
   sudo: True
 
 - name: copy openrc.sh files
-  copy: src={{ item }} dest=/home/vagrant/{{ item }} owner=root group=root mode=0644
+  copy: src={{ item }} dest=/root/{{ item }} owner=root group=root mode=0644
   with_items:
     - admin-openrc.sh
     - demo-openrc.sh

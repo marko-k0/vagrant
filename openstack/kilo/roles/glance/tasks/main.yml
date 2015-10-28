@@ -125,11 +125,11 @@
 # Verify operation
 
 - name: copy add-img.sh script 
-  copy: src=add-img.sh dest=/home/vagrant/add-img.sh owner=root group=root mode=0644
+  copy: src=add-img.sh dest=/root/add-img.sh owner=root group=root mode=0644
   sudo: true
 
 - name: upload image to the image service with add-img.sh script
-  shell: sh /home/vagrant/add-img.sh
+  shell: sh /root/add-img.sh
   when: glance_touch.stat.exists == false
   sudo: true
 

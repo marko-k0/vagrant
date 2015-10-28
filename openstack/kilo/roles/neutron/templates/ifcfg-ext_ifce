@@ -1,0 +1,5 @@
+DEVICE={{ ext_ifce }}
+ONBOOT=yes
+DEVICETYPE=ovs
+TYPE=OVSIntPort
+OVS_BRIDGE=br-ex

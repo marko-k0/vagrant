@@ -108,12 +108,12 @@
   when: nova_touch.stat.exists == false and on_controller is defined
 
 - name: copy set-endpoint.sh script 
-  copy: src=set-endpoint.sh dest=/home/vagrant/set-endpoint.sh owner=root group=root mode=0644
+  copy: src=set-endpoint.sh dest=/root/set-endpoint.sh owner=root group=root mode=0644
   sudo: true
   when: nova_touch.stat.exists == false and on_controller is defined
 
 - name: create the compute service API endpoint
-  shell: sh /home/vagrant/set-endpoint.sh
+  shell: sh /root/set-endpoint.sh
   sudo: true
   when: nova_touch.stat.exists == false and on_controller is defined
 
@@ -153,10 +153,10 @@
     - { section: 'keystone_authtoken', param: 'project_name', value: 'service' }
     - { section: 'keystone_authtoken', param: 'username', value: 'nova' }
     - { section: 'keystone_authtoken', param: 'password', value: '{{ NOVA_PASS }}' }
-    - { section: 'DEFAULT', param: 'my_ip', value: '{{ compute_mgmt_ip }}' }
+    - { section: 'DEFAULT', param: 'my_ip', value: '{{ inventory_hostname }}_mgmt_ip' }
     - { section: 'DEFAULT', param: 'vnc_enabled', value: 'True' }
     - { section: 'DEFAULT', param: 'vncserver_listen', value: '0.0.0.0' }
-    - { section: 'DEFAULT', param: 'vncserver_proxyclient_address', value: '{{ compute_mgmt_ip }}' }
+    - { section: 'DEFAULT', param: 'vncserver_proxyclient_address', value: '{{ inventory_hostname }}_mgmt_ip' }
     - { section: 'DEFAULT', param: 'novncproxy_base_url', value: 'http://controller:6080/vnc_auto.html' }
     - { section: 'glance', param: 'host', value: 'controller' }
     - { section: 'oslo_concurrency', param: 'lock_path', value: '/var/lib/nova/tmp' }
