@@ -4,7 +4,7 @@ Sharing is caring.
 
 ## FreeBSD Cache Repo
 
-FreeBSD having a roll of [PKG cache server](http://blog.redondo.si/blog/2015/05/25/freebsd-pkg-cache-server/).
+FreeBSD having a role of [PKG cache server](http://blog.redondo.si/blog/2015/05/25/freebsd-pkg-cache-server/).
 and [Composer/NPM/Bower cache server](http://blog.redondo.si/blog/2015/05/25/composer-slash-npm-slash-bower-cache-server/).
 
 ## Vagrant Catalog
